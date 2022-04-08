@@ -1,12 +1,10 @@
-init_optimizer <- function(pool_returns_xts, bm_wgts=NULL, rebalance_at=NULL, constraints_assets_n=10){
+init_optimizer <- function(pool_returns_xts, bm_wgts=NULL, rebalance_at=NULL, constraints_assets_n=10, iter=100){
   
   v <- list(
     "pool" = list(
       "returns" = NULL,
-      #"mean_returns" = NULL,
       "assets_n" = NULL,
-      "days_n" = NULL#,
-      #"cov" = NULL
+      "days_n" = NULL
     ),
     "fund" = list(
       "wgts" = NULL,
@@ -16,7 +14,7 @@ init_optimizer <- function(pool_returns_xts, bm_wgts=NULL, rebalance_at=NULL, co
       "pso_pkg" = list(
         "fun" = NULL,
         "settings" = list(
-          "risk_factor_intensity" = list("mean"=1, "sd"=1, "sum_wgts"=1, "tracking_error"=1, "assets_n"=1, "percent_change"=1, "short"=1),
+          "risk_factor_intensity" = list("mean"=10, "sd"=10, "sum_wgts"=10, "tracking_error"=10, "assets_n"=5, "percent_change"=3, "short"=10, "beta"=0),
           "tracking_error" = list("reduce_historical_intensity_to"=0.3, "reduce_positivs"=0.5)
         )
       )
@@ -26,15 +24,18 @@ init_optimizer <- function(pool_returns_xts, bm_wgts=NULL, rebalance_at=NULL, co
       "returns" = NULL
     ),
     "options" = list(
-      "iter" = 5000,
+      "iter" = 100,
       "rebalance_at" = NULL,
-      "round_at" = 6
+      "round_at" = 6,
+      "data_history" = "1y"
     ),
     "constraints" = list(
       "sum_wgts" = 0.999,
       "assets_n" = NULL,
       "percent_change" = 0.2,
-      "short" = NULL
+      "short" = NULL,
+      "beta" = 1,
+      "transaction_fee" = 0.001
     ),
     "results" = list(
     ),
@@ -42,6 +43,7 @@ init_optimizer <- function(pool_returns_xts, bm_wgts=NULL, rebalance_at=NULL, co
     )
   )
   
+  v$options$iter <- iter
    
   v$pool$returns <- pool_returns_xts
   v$pool$assets_n <- ncol(v$pool$returns)

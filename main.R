@@ -24,7 +24,7 @@ get_global()
 load("world_index_data.rdata")
 pool_returns_xts <- daily_return_adjusted_data %>% 
   select(ticker, timestamp, return) %>%
-  filter(timestamp >= "2020-01-01") %>% 
+  filter(timestamp >= "2018-02-01") %>%  #timestamp <= "2020-06-01"
   pivot_wider(names_from = "ticker", values_from = "return") %>% 
   arrange(timestamp) %>% 
   data.frame()
@@ -36,20 +36,20 @@ rm(daily_return_adjusted_data)
 
 v <- init_optimizer(
   pool_returns_xts = pool_returns_xts,
-  rebalance_at = seq.Date(from = as.Date(paste0(substr(min(index(pool_returns_xts)),1,8),"01")), to=as.Date(paste0(substr(max(index(pool_returns_xts)),1,8),"01")), by="months") %>% last(20),
-  constraints_assets_n = 100
+  rebalance_at = seq.Date(from = as.Date(paste0(substr(min(index(pool_returns_xts)),1,8),"01")), to=as.Date(paste0(substr(max(index(pool_returns_xts)),1,8),"01")), by="months") %>% last(50),
+  constraints_assets_n = 100,
+  iter = 30
 )
 
 
 
-v <- v$algorithm$pso_pkg$fun(v = v, save_stats = F)
+v$algorithm$pso_pkg$fun(v = v, save_stats = T)
 
-
-v$plots$saved_stats_plot
+saved_stats_chart(v$plots$saved_stats, y_max = 0.00005)
 
 plot_list <- linechart_backtest_returns(v)
 plot_list$p_not_split
 plot_list$p_split
 
-
+#save.image("C:\\Users\\Axel\\Desktop\\Master-Thesis-All\\Results_and_Plots\\long_backtest_4.5k_symbols_22_04_07_v2.rdata")
 

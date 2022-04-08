@@ -21,7 +21,7 @@ linechart_backtest_returns <- function(v){
     res <- v$results[[i]]
     
     from <- res$date
-    to <- if(i != length(v$results)){v$results[[i+1]]$date-1}else{max(index(v$pool$returns))}
+    to <- if(i != length(v$results)){v$results[[i+1]]$date-1}else{min(max(index(v$pool$returns)), from + days(30))}
     
     returns <- cbind.xts(
       "Fund" = xts(v$pool$returns[paste0(from,"/",to),] %*% res$wgts, order.by=as.Date(index(v$bm$returns[paste0(from,"/",to),]))),
@@ -52,10 +52,14 @@ linechart_backtest_returns <- function(v){
       annotation_data,
       data.frame(
         "Date"=res$date,
-        "TE_train"=round(res$tracking_error_train,6),
-        "TE_test"=if(!is.null(res$tracking_error_test)){round(res$tracking_error_test,6)}else{NA},
+        "TE_train"=round(res$te_train,6),
+        "TE_train_1i"=round(res$te_train_1i,6),
+        "TE_test_1i"=if(!is.null(res$te_test_1i)){round(res$te_test_1i,6)}else{NA},
+        "beta_train"=round(res$beta_train,6),
+        "beta_train_1i"=round(res$beta_train_1i,6),
+        "beta_test_1i"=if(!is.null(res$beta_test_1i)){round(res$beta_test_1i,6)}else{NA},
         "change"=if(is.null(res$percent_change)){"100 %"}else{paste0(round(res$percent_change,4)*100," %")},
-        "Alpha"=paste0(round(last(returns$Fund-returns$BM),2), " %"))
+        "alpha"=paste0(round(last(returns$Fund-returns$BM),2), " %"))
     )
     
   }
@@ -71,7 +75,14 @@ linechart_backtest_returns <- function(v){
     add_annotations(
       x = annotation_data$Date,
       y = max(all_returns_split[,2:3], na.rm = T)*1.1,
-      text = paste0("TE_train: ", annotation_data$TE_train, "\nTE_test: ", annotation_data$TE_test, "\nAlpha: ", annotation_data$Alpha, "\nchange: ", annotation_data$change),
+      text = paste0("TE_train: ", annotation_data$TE_train, 
+                    "\nTE_train_1i: ", annotation_data$TE_train_1i, 
+                    "\nTE_test_1i: ", annotation_data$TE_test_1i, 
+                    "\nbeta_train: ", annotation_data$beta_train, 
+                    "\nbeta_train_1i: ", annotation_data$beta_train_1i, 
+                    "\nbeta_test_1i: ", annotation_data$beta_test_1i, 
+                    "\nalpha: ", annotation_data$alpha, 
+                    "\nchange: ", annotation_data$change),
       xref = "x",
       yref = "y",
       showarrow=F) %>%
@@ -89,3 +100,36 @@ linechart_backtest_returns <- function(v){
 }
 
 
+
+saved_stats_chart <- function(saved_stats, y_max = 1){
+  saved_stats <- saved_stats %>%
+    mutate(row = round(row/100)) %>%
+    group_by(row) %>%
+    summarise(return = sum(return),
+              risk = sum(risk),
+              sum_wgts = sum(sum_wgts),
+              te = sum(te),
+              asset_n = sum(asset_n),
+              change = sum(change),
+              short = sum(short),
+              obj = sum(obj),
+              beta = sum(beta)
+    ) %>%
+    ungroup() %>%
+    mutate(obj = obj/max(obj)*100)
+
+  p1 <- plot_ly(data = saved_stats, x=~row, y=~return, name="return", mode="none", type = 'scatter', stackgroup="one", groupnorm="percent") %>%
+    add_trace(y=~risk, name="risk") %>%
+    add_trace(y=~sum_wgts, name="sum_wgts") %>%
+    add_trace(y=~te, name="te") %>%
+    add_trace(y=~asset_n, name="asset_n") %>%
+    add_trace(y=~change, name="change") %>%
+    add_trace(y=~short, name="short") %>%
+    add_trace(y=~beta, name="beta")
+
+
+  p2 <- plot_ly(data = saved_stats, x=~row, y=~obj, name="obj", mode="lines", type = 'scatter') %>%
+    layout(yaxis=list(range=c(0,y_max), ticksuffix="%"))
+
+  return(subplot(p1, p2, nrows = 2))
+}
