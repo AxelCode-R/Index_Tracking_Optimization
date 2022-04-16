@@ -16,7 +16,7 @@ print(l.out$df.tickers)
 
 
 
-df.out <- quantmod::getSymbols(Symbols = c("REX"),
+df.out <- quantmod::getSymbols(Symbols = c("SPX"),
                                src = "yahoo", from = Sys.Date()-365, to = Sys.Date(), auto.assign = F)
 
 

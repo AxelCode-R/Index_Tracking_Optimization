@@ -27,6 +27,7 @@ linechart_backtest_returns <- function(v){
       "Fund" = xts(v$pool$returns[paste0(from,"/",to),] %*% res$wgts, order.by=as.Date(index(v$bm$returns[paste0(from,"/",to),]))),
       "BM" = v$bm$returns[paste0(from,"/",to),]
     )
+    names(returns) <- c("Fund","BM")
     
     
     df_returns_not_split <- data.frame("Date"=index(returns), as.data.frame(returns))
@@ -58,7 +59,7 @@ linechart_backtest_returns <- function(v){
         "beta_train"=round(res$beta_train,6),
         "beta_train_1i"=round(res$beta_train_1i,6),
         "beta_test_1i"=if(!is.null(res$beta_test_1i)){round(res$beta_test_1i,6)}else{NA},
-        "change"=if(is.null(res$percent_change)){"100 %"}else{paste0(round(res$percent_change,4)*100," %")},
+        "change"=if(is.null(res$change)){"100 %"}else{paste0(round(res$change,4)*100," %")},
         "alpha"=paste0(round(last(returns$Fund-returns$BM),2), " %"))
     )
     
@@ -105,21 +106,21 @@ saved_stats_chart <- function(saved_stats, y_max = 1){
   saved_stats <- saved_stats %>%
     mutate(row = round(row/100)) %>%
     group_by(row) %>%
-    summarise(return = sum(return),
-              risk = sum(risk),
-              sum_wgts = sum(sum_wgts),
-              te = sum(te),
-              asset_n = sum(asset_n),
-              change = sum(change),
-              short = sum(short),
-              obj = sum(obj),
-              beta = sum(beta)
-    ) %>%
+    summarise_all(sum) %>%
     ungroup() %>%
     mutate(obj = obj/max(obj)*100)
+  
 
-  p1 <- plot_ly(data = saved_stats, x=~row, y=~return, name="return", mode="none", type = 'scatter', stackgroup="one", groupnorm="percent") %>%
-    add_trace(y=~risk, name="risk") %>%
+  for(i in 1:ncol(saved_stats)){
+    if(min(saved_stats[,i])<0 && names(saved_stats[,i])!="obj"){
+      saved_stats$obj <- saved_stats$obj + abs(min(saved_stats[,i]))
+      saved_stats[,i] <- saved_stats[,i] + abs(min(saved_stats[,i]))
+    }
+  }
+
+  p1 <- plot_ly(data = saved_stats, x=~row, y=~sharp_ratio, name="sharp_ratio", mode="none", type = 'scatter', stackgroup="one", groupnorm="percent") %>%
+    # add_trace(y=~return, name="return") %>%
+    # add_trace(y=~risk, name="risk") %>%
     add_trace(y=~sum_wgts, name="sum_wgts") %>%
     add_trace(y=~te, name="te") %>%
     add_trace(y=~asset_n, name="asset_n") %>%
