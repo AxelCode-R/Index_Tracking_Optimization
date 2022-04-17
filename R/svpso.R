@@ -1,4 +1,7 @@
-pso_default_obj_func <- function(wgts, v, date_interval, cov, mean_returns, prices, env, save_stats = FALSE){
+# SPARSE VELOCITY PSO
+
+svpso_obj_func <- function(wgts, v, date_interval, cov, mean_returns, prices, env, save_stats = FALSE){
+  
   
   intensitys <- v$algorithm$pso_pkg$settings$risk_factor_intensity
   
@@ -18,6 +21,8 @@ pso_default_obj_func <- function(wgts, v, date_interval, cov, mean_returns, pric
   }
   
   
+  # sum up to sum_wgts (v$constraints$sum_wgts)
+  sum_wgts <- (sum(wgts) - v$constraints$sum_wgts)^2
   
   # minimize tracking error with decreasing intensity and reduced positiv errors
   te_settings <- v$algorithm$pso_pkg$settings$tracking_error
@@ -26,10 +31,19 @@ pso_default_obj_func <- function(wgts, v, date_interval, cov, mean_returns, pric
   te[te>0] <- te[te>0] * te_settings$reduce_positivs
   te <- sd(te)
   
+  # target cardinality constrain of n (v$constraints$assets_n) assets
+  asset_n <- if(!is.null(v$constraints$assets_n)){
+    ((sum(wgts!=0)-v$constraints$assets_n)^2)/v$constraints$assets_n
+  }else{0}
   
   # percent change on rebalancing
   change <- if(!is.null(v$fund$wgts)){
     max(sum(abs(v$fund$wgts-wgts)), 2*v$constraints$change) - 2*v$constraints$change
+  }else{0}
+  
+  # allow only v$constraints$short percent in short positions
+  short <- if(!is.null(v$constraints$short)){
+    max(sum(abs(wgts[wgts<0])), v$constraints$short) - v$constraints$short
   }else{0}
   
   
@@ -42,29 +56,30 @@ pso_default_obj_func <- function(wgts, v, date_interval, cov, mean_returns, pric
     intensitys$return * return +
     intensitys$risk * risk +
     intensitys$sharp_ratio * sharp_ratio + 
+    intensitys$sum_wgts * sum_wgts + 
     intensitys$tracking_error * te + 
+    intensitys$assets_n * asset_n + 
     intensitys$change * change + 
+    intensitys$short * short +
     intensitys$beta * beta
   
-  # if(save_stats){
-  #   env$saved_stats[[length(env$saved_stats)+1]] <- data.frame(
-  #     "obj"=obj,
-  #     "sharp_ratio"=intensitys$sharp_ratio*sharp_ratio,
-  #     "sum_wgts"=intensitys$sum_wgts*sum_wgts,
-  #     "te"=intensitys$tracking_error*te,
-  #     "asset_n"=intensitys$assets_n*asset_n,
-  #     "change"=intensitys$change*change,
-  #     "short"=intensitys$short*short,
-  #     "beta"=intensitys$beta * beta
-  #   )
-  # }
+  if(save_stats){
+    env$saved_stats[[length(env$saved_stats)+1]] <- data.frame(
+      "obj"=obj,
+      "sharp_ratio"=intensitys$sharp_ratio*sharp_ratio,
+      "sum_wgts"=intensitys$sum_wgts*sum_wgts,
+      "te"=intensitys$tracking_error*te,
+      "asset_n"=intensitys$assets_n*asset_n,
+      "change"=intensitys$change*change,
+      "short"=intensitys$short*short,
+      "beta"=intensitys$beta * beta
+    )
+  }
   
   return(obj)
 }
 
-
-
-pso_default <- function(
+svpso <- function(
   par, 
   fn, 
   control = list(
@@ -85,7 +100,8 @@ pso_default <- function(
   prices,
   env,
   save_stats){
-  # Book Applying PSO S.173 (10.1)
+  
+  # Book Applying PSO S.174 (10.2)
   n <- length(par)
   fn1 <- function(par){
     fn(
@@ -99,80 +115,87 @@ pso_default <- function(
       save_stats = save_stats
     )
   }
+  
   max_wgts <- rep(control$max_wgt, n)
-
+  
   #browser()
   
   # init velocity
-  p.vel <- matrix(runif(n*control$s,-1,1), ncol=control$s) * max_wgts * control$maxV
+  vel <- matrix(runif(n*control$s,-1,1), ncol=control$s) * max_wgts * control$maxV
   
   # init particle position
-  p.pos <- matrix(runif(n*control$s,0,1), ncol=control$s) * max_wgts
+  pos <- matrix(runif(n*control$s,0,1), ncol=control$s) * max_wgts
   
   # cardinality
-  for(k in 1:control$s){
-    p.pos[order(p.pos[, k], decreasing = T)[-(1:control$cardinal_n)], k] <- 0
-    p.pos[, k] <- control$sum_wgt * p.pos[, k] / max(sum(p.pos[, k]), 0.00001)
-    p.pos[, k] <- as.vector(floor(p.pos[, k]*v$options$NAV/coredata(prices)) * coredata(prices) / v$options$NAV)
-  }
+  pos <- make_sparse(pos=pos, sum_wgt=control$sum_wgt, cardinal_n=control$cardinal_n, NAV=v$options$NAV, prices=prices)
   
   # fittness
-  p.fit <- apply(p.pos, 2, fn1)
+  fit <- apply(pos, 2, fn1)
   
   # init local best
-  p.lb <- p.pos
+  lb <- pos
   
   # init fittness of all local best
-  p.lb.fit <- p.fit
+  lb.fit <- fit
   
   # init global best
-  p.gb <- p.lb[, which.min(p.lb.fit)]
+  gb <- lb[, which.min(lb.fit)]
   
   # init fittness of global best
-  p.gp.fit <- min(p.lb.fit)
+  gb.fit <- min(lb.fit)
   
   i <- 0
   while(i<=control$maxit){
     i <- i + 1
     
     # new velocity
-    p.vel <- control$inertia * p.vel + 
-      control$c1 * matrix(runif(n*control$s,0,1), ncol=control$s) * ( p.lb - p.pos ) +
-      control$c2 * matrix(runif(n*control$s,0,1), ncol=control$s) * ( p.gb - p.pos )
+    vel <- control$inertia * vel + 
+      control$c1 * matrix(runif(n*control$s,0,1), ncol=control$s) * ( lb - pos ) +
+      control$c2 * matrix(runif(n*control$s,0,1), ncol=control$s) * ( gb - pos )
     
     # new position
-    p.pos <- p.pos + p.vel
-
+    pos <- pos + vel
+    
     # cardinality
-    for(k in 1:control$s){
-      p.pos[order(p.pos[, k], decreasing = T)[-(1:control$cardinal_n)], k] <- 0
-      p.pos[, k] <- control$sum_wgt * p.pos[, k] / max(sum(p.pos[, k]), 0.00001)
-      p.pos[, k] <- as.vector(floor(p.pos[, k]*v$options$NAV/coredata(prices)) * coredata(prices) / v$options$NAV)
-    }
+    pos <- make_sparse(pos=pos, sum_wgt=control$sum_wgt, cardinal_n=control$cardinal_n, NAV=v$options$NAV, prices=prices)
     
     # fittness
-    p.fit <- apply(p.pos, 2, fn1)
+    fit <- apply(pos, 2, fn1)
     
-    # init local best
-    p.lb[, p.lb.fit > p.fit] <- p.pos[, p.fit < p.lb.fit]
+    # new local best
+    lb[, lb.fit > fit] <- pos[, fit < lb.fit]
     
-    # init fittness of all local best
-    p.lb.fit[p.lb.fit > p.fit] <- p.fit[p.fit < p.lb.fit]
+    # set fittness of all local best
+    lb.fit[lb.fit > fit] <- fit[fit < lb.fit]
     
-    # init global best
-    p.gb <- p.lb[, which.min(p.lb.fit)]
+    if(sum(gb.fit > lb.fit)>0){
+      # init global best
+      gb <- lb[, which.min(lb.fit)]
+      
+      # init fittness of global best
+      gb.fit <- min(lb.fit)
+    }
     
-    # init fittness of global best
-    p.gp.fit <- min(p.lb.fit)
-    
-    message(paste0("fittness: ", p.gp.fit))
+    message(paste0("fittness: ", gb.fit))
   }
   
-  return(p.gb)
+  return(gb)
 }
 
 
-pso_default_wrapper <- function(v, save_stats = FALSE){
+
+make_sparse <- function(pos, sum_wgt, cardinal_n, NAV, prices){
+  for(k in 1:ncol(pos)){
+    pos[order(pos[, k], decreasing = T)[-(1:cardinal_n)], k] <- 0
+    pos[, k] <- sum_wgt * pos[, k] / max(sum(pos[, k]), 0.00001)
+    pos[, k] <- as.vector(floor(pos[, k]*NAV/coredata(prices)) * coredata(prices) / NAV)
+  }
+  return(pos)
+}
+
+
+
+svpso_wrapper <- function(v, save_stats = FALSE){
   env <- new.env()
   
   for(i in 1:length(v$options$rebalance_at)){
@@ -187,9 +210,20 @@ pso_default_wrapper <- function(v, save_stats = FALSE){
     cov <- cov(v$pool$returns[date_interval,])
     prices <- v$pool$prices[last(which(index(v$pool$prices) <= (date-1))),]
     
-    opt <- pso_default(
+    opt <- svpso(
       par = if(!is.null(v$fund$wgts)){v$fund$wgts}else{rep(0, v$pool$assets_n)},
-      fn = pso_default_obj_func,
+      fn = svpso_obj_func,
+      control = list(
+        maxit = 50, # max iterations
+        s = 100, # number of particles
+        maxV = 0.5, # max velocity
+        inertia = 0.2, # inertia weight 
+        c1 = 0.5,
+        c2 = 0.5,
+        cardinal_n = 50, # par unequal 0
+        max_wgt = 0.04,
+        sum_wgt = 1
+      ),
       v = v,
       date_interval = date_interval,
       cov = cov,

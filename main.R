@@ -56,13 +56,13 @@ spx_bm <- spx_bm["2017-01-01/2022-04-07",]
 v <- init_optimizer(
   pool_prices = pool_prices,
   bm_returns = spx_bm,
-  rebalance_at = seq.Date(from = as.Date(paste0(substr(min(pool_prices$timestamp),1,8),"01")), to=as.Date(paste0(substr(max(pool_prices$timestamp),1,8),"01")), by="months") %>% last(50),
+  rebalance_at = seq.Date(from = as.Date(paste0(substr(min(pool_prices$timestamp),1,8),"01")), to=as.Date(paste0(substr(max(pool_prices$timestamp),1,8),"01")), by="months") %>% last(5),
   constraints_assets_n = 50,
   iter = 50
 )
 
 
-v$algorithm$pso_pkg$fun(v = v, save_stats = T)
+v$algorithm$pso_pkg$fun(v = v, save_stats = F)
 
 saved_stats_chart(v$plots$saved_stats, y_max = v$plots$saved_stats$obj %>% mean() * 0.3)
 
