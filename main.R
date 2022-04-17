@@ -64,6 +64,10 @@ v <- init_optimizer(
 
 v$algorithm$svpso$fun(v = v, save_stats = F)
 
+v$algorithm$cvpso$fun(v = v, save_stats = F)
+
+v$algorithm$csvpso$fun(v = v, save_stats = F)
+
 #saved_stats_chart(v$plots$saved_stats, y_max = v$plots$saved_stats$obj %>% mean() * 0.3)
 
 plot_list <- linechart_backtest_returns(v)

@@ -268,8 +268,6 @@ cvpso_wrapper <- function(v, save_stats = FALSE){
       "wgts" = opt
     )
     
-    l$wgts <- as.vector(floor(l$wgts*v$options$NAV/coredata(prices)) * coredata(prices) / v$options$NAV)
-    l$wgts[l$wgts*v$options$NAV < v$options$min_transaction_size] <- 0
     names(l$wgts) <- names(v$pool$returns)
     
     l$anzahl <- l$wgts*v$options$NAV/coredata(prices)
