@@ -62,9 +62,9 @@ v <- init_optimizer(
 )
 
 
-v$algorithm$pso_pkg$fun(v = v, save_stats = F)
+v$algorithm$svpso$fun(v = v, save_stats = F)
 
-saved_stats_chart(v$plots$saved_stats, y_max = v$plots$saved_stats$obj %>% mean() * 0.3)
+#saved_stats_chart(v$plots$saved_stats, y_max = v$plots$saved_stats$obj %>% mean() * 0.3)
 
 plot_list <- linechart_backtest_returns(v)
 plot_list$p_not_split

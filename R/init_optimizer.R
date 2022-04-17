@@ -17,6 +17,27 @@ init_optimizer <- function(pool_prices, bm_wgts=NULL, bm_returns=NULL, rebalance
           "risk_factor_intensity" = list("return"=1, "risk"=1 ,"sharp_ratio"=1, "sum_wgts"=10, "tracking_error"=5, "assets_n"=10, "change"=10, "short"=10, "beta"=1),
           "tracking_error" = list("reduce_historical_intensity_to"=0.5, "reduce_positivs"=1)
         )
+      ),
+      "svpso" = list(
+        "fun" = NULL,
+        "settings" = list(
+          "risk_factor_intensity" = list("return"=1, "risk"=1 ,"sharp_ratio"=1, "sum_wgts"=10, "tracking_error"=5, "assets_n"=10, "change"=10, "short"=10, "beta"=1),
+          "tracking_error" = list("reduce_historical_intensity_to"=0.5, "reduce_positivs"=1)
+        )
+      ),
+      "cvpso" = list(
+        "fun" = NULL,
+        "settings" = list(
+          "risk_factor_intensity" = list("return"=1, "risk"=1 ,"sharp_ratio"=1, "sum_wgts"=10, "tracking_error"=5, "assets_n"=10, "change"=10, "short"=10, "beta"=1),
+          "tracking_error" = list("reduce_historical_intensity_to"=0.5, "reduce_positivs"=1)
+        )
+      ),
+      "csvpso" = list(
+        "fun" = NULL,
+        "settings" = list(
+          "risk_factor_intensity" = list("return"=1, "risk"=1 ,"sharp_ratio"=1, "sum_wgts"=10, "tracking_error"=5, "assets_n"=10, "change"=10, "short"=10, "beta"=1),
+          "tracking_error" = list("reduce_historical_intensity_to"=0.5, "reduce_positivs"=1)
+        )
       )
     ),
     "bm" = list(
@@ -89,7 +110,11 @@ init_optimizer <- function(pool_prices, bm_wgts=NULL, bm_returns=NULL, rebalance
   
   #v$algorithm$pso_pkg$fun <- pso_pkg_wrapper
   
-  v$algorithm$pso_pkg$fun <- pso_default_wrapper
+  v$algorithm$pso_pkg$fun <- pso_pkg_wrapper
+  
+  v$algorithm$svpso$fun <- svpso_wrapper
+  v$algorithm$cvpso$fun <- cvpso_wrapper
+  v$algorithm$csvpso$fun <- csvpso_wrapper
   
   return(v)
 }

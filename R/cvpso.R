@@ -124,6 +124,8 @@ cvpso <- function(
   # init particle position
   pos <- matrix(runif(n*control$s,0,1), ncol=control$s) * max_wgts
   
+  pos[,1] <- par
+  
   # cardinality
   pos.s <- make_sparse(pos=pos, sum_wgt=control$sum_wgt, cardinal_n=control$cardinal_n, NAV=v$options$NAV, prices=prices)
   
