@@ -12,7 +12,7 @@ plotly_line_chart_xts <- function(data_xts){
 
 
 
-linechart_backtest_returns <- function(v){
+linechart_backtest_returns <- function(v, title=""){
   
   all_returns_not_split <- NULL
   all_returns_split <- NULL
@@ -66,7 +66,8 @@ linechart_backtest_returns <- function(v){
   }
   
   all_returns_not_split <- return_to_cumret(xts(all_returns_not_split[,-1], order.by=as.Date(all_returns_not_split$Date)))
-  p_not_split <- plotly_line_chart_xts(all_returns_not_split)
+  p_not_split <- plotly_line_chart_xts(all_returns_not_split) %>% 
+    layout(title=title)
   
   
   
@@ -88,6 +89,7 @@ linechart_backtest_returns <- function(v){
       yref = "y",
       showarrow=F) %>%
     layout(
+      title=title,
       xaxis = list(
         type = 'date',
         tickformat = "%Y-%m-%d",

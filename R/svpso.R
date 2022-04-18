@@ -178,10 +178,10 @@ svpso <- function(
       gb.fit <- min(lb.fit)
     }
     
-    message(paste0("fittness: ", gb.fit))
+    cat(paste0(i,": ", round(gb.fit,4),"  |  "))
   }
   
-  return(gb)
+  return(list("wgt"=gb, "fit"=gb.fit))
 }
 
 
@@ -216,15 +216,15 @@ svpso_wrapper <- function(v, save_stats = FALSE){
       par = if(!is.null(v$fund$wgts)){v$fund$wgts}else{rep(0, v$pool$assets_n)},
       fn = svpso_obj_func,
       control = list(
-        maxit = 50, # max iterations
+        maxit = v$options$iter, # max iterations
         s = 100, # number of particles
         maxV = 0.5, # max velocity
-        inertia = 0.2, # inertia weight 
+        inertia = 0.5, # inertia weight 
         c1 = 0.5,
         c2 = 0.5,
-        cardinal_n = 50, # par unequal 0
-        max_wgt = 0.04,
-        sum_wgt = 1
+        cardinal_n = v$constraints$assets_n, # par unequal 0
+        max_wgt = v$options$max_wgt,
+        sum_wgt = v$constraints$sum_wgts
       ),
       v = v,
       date_interval = date_interval,
@@ -261,7 +261,8 @@ svpso_wrapper <- function(v, save_stats = FALSE){
     l <- list(
       "time" = round(as.numeric(difftime(Sys.time(), start_time, units="s"))),
       "date" = date,
-      "wgts" = opt
+      "wgts" = opt$wgt,
+      "fit" = opt$fit
     )
     
     
@@ -309,7 +310,9 @@ svpso_wrapper <- function(v, save_stats = FALSE){
     
     v <<- v
     
+    print("")
     print(paste0("took ", l$time, " secounds"))
+    print("___")
   }
   
   

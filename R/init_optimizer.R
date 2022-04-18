@@ -47,18 +47,18 @@ init_optimizer <- function(pool_prices, bm_wgts=NULL, bm_returns=NULL, rebalance
     "options" = list(
       "iter" = 100,
       "rebalance_at" = NULL,
-      "round_at" = 6,
+      #"round_at" = 6,
       "data_history" = 100, # days
       "NAV" = 10000000,
-      "fee" = 0.001,
-      "min_transaction_size" = 100000,
+      #"fee" = 0.001,
+      #"min_transaction_size" = 100000,
       "max_wgt" = 0.04
     ),
     "constraints" = list(
       "sum_wgts" = 0.999,
       "assets_n" = NULL,
       "change" = 0.2,
-      "short" = NULL,
+      #"short" = NULL,
       "beta" = 1,
       "transaction_fee" = 0.001
     ),
